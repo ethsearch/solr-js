@@ -1,7 +1,7 @@
 const maxResult = 10;
 const QUERY = `&q=`;
 const ROWS = `&rows`;
-const START = `&start`;
+const START = `&start=`;
 const SORT = `&sort=`;
 const JSON = `&wt=json`;
 const INDENT = `&indent=on`;
@@ -9,37 +9,48 @@ const FIELDS = 'fl=';
 
 class Query {
 
-    constructor(url, path, query, offset, fields, rows, sort){
+    constructor(url, path){
         this.url = url;
         this.path = path;
-        this.query = query;
-        this.offset = offset;
-        this.fields = fields;
-        this.rows = (rows > maxResult)? maxResult : rows;
-        this.sort = sort;
+    }
+
+    set rows(rows){
+        this._rows = (rows > maxResult)? maxResult : rows;
     }
 
     next(){
-        if(this.resultSize == undefined || (this.resultSize != undefined && this.resultSize > this.offset)){
+        if(this.hasNext()){
             return new Promise((resolve, reject) => {
+                let offset = this.offset;
+                this.offset = this.offset + this._rows;
                 $.ajax({
                     url: this.url + this.path,
-                    data: `?` + this.buildFieldParams(this.fields) + this.buildQueryParams(this.query, this.offset, this.rows, this.sort), 
+                    data: `?` + this.buildFieldParams(this.fields) + this.buildQueryParams(this.query, offset, this._rows, this.sort), 
                     dataType: 'jsonp',
                     jsonp: 'json.wrf',
                     success: (res) => {
-                        this.offset = this.offset + res.response.docs.length;
                         if(this.resultSize == undefined) this.resultSize = res.response.numFound;
-                        console.log(this.resultSize);
                         resolve(res);
                     },
                     error: reject
                 });
             });
         }
-        return;
+        else throw 'Query has returned a complete result set';
     }
 
+    hasNext(){
+        return (this.resultSize == undefined || (this.resultSize != undefined && this.resultSize > this.offset));
+    }
+
+    reset(){
+        this.offset = 0;
+    }
+
+    getURLSearchParams(){
+        return `?` + this.buildFieldParams(this.fields) + this.buildQueryParams(this.query, offset, this._rows, this.sort);
+    }
+    
     buildFieldParams(fields){
         if(fields == undefined || fields.length < 1) return;
         return FIELDS + fields;
