@@ -1,3 +1,5 @@
+import $ from "jquery";
+
 const maxResult = 10;
 const QUERY = `&q=`;
 const ROWS = `&rows`;
